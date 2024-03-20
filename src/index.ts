@@ -1,5 +1,5 @@
 import { Static, TSchema, TUnknown } from "@sinclair/typebox";
-import { TypeCheck } from "@sinclair/typebox/compiler";
+import { Value } from '@sinclair/typebox/value'
 
 export class ResponseValidationError extends Error {}
 
@@ -13,23 +13,20 @@ export class TypeBoxResponse extends Response {
   }
 
   json(): Promise<unknown>;
-  json<T extends TSchema>(typeChecker: TypeCheck<T>): Promise<Static<T>>;
+  json<T extends TSchema>(schema: T): Promise<Static<T>>;
   async json<T extends TSchema = TUnknown>(
-    typeChecker?: TypeCheck<T>
+      schema?: T
   ): Promise<Static<T>> {
-    if (!typeChecker) return super.json();
+    if (!schema) return super.json();
     const body = await super.json();
-    const result = typeChecker.Check(body);
+    const result = Value.Check(schema, body);
     if (result) return body;
 
-    const errors = typeChecker.Errors(body);
+    const errors = Value.Errors(schema, body);
     const firstError = errors.First();
 
     throw new ResponseValidationError(
-      `ResponseValidationError ${firstError?.message}. path: ${firstError?.path} value: ${firstError?.value}`,
-      {
-        cause: firstError,
-      }
+      `ResponseValidationError ${firstError?.message}. path: ${firstError?.path} value: ${firstError?.value}`
     );
   }
 }
